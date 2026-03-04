@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1>贪吃蛇游戏</h1>
+
+        <div class="game-info">
+            <div class="score-section">
+                <span class="score-label">分数: </span>
+                <span id="score">0</span>
+            </div>
+            <div class="high-score-section">
+                <span class="high-score-label">最高分: </span>
+                <span id="high-score">0</span>
+            </div>
+        </div>
+
+        <div class="difficulty-section">
+            <label for="difficulty">难度:</label>
+            <select id="difficulty">
+                <option value="easy" selected>简单</option>
+                <option value="medium">中等</option>
+                <option value="hard">困难</option>
+                <option value="expert">专家</option>
+            </select>
+        </div>
+
+        <!-- 新增道具说明面板 -->
+        <div class="instructions">
+            <details open>
+                <summary>游戏说明与道具详解</summary>
+                <div class="instructions-content">
+                    <h3>游戏玩法</h3>
+                    <p>使用方向键控制蛇的移动，吃到食物后蛇会变长并获得分数。</p>
+
+                    <h3>道具详解</h3>
+                    <div class="powerup-details">
+                        <div class="powerup-detail">
+                            <span class="powerup-icon">🍎</span>
+                            <div class="powerup-info">
+                                <strong>普通食物</strong>
+                                <p>增加 10 分，蛇长度+1</p>
+                            </div>
+                        </div>
+                        <div class="powerup-detail">
+                            <span class="powerup-icon">⚡</span>
+                            <div class="powerup-info">
+                                <strong>加速道具</strong>
+                                <p>暂时提高蛇的移动速度，持续 5 秒</p>
+                                <p>玩法：帮助你在紧急情况下快速穿过狭窄通道</p>
+                            </div>
+                        </div>
+                        <div class="powerup-detail">
+                            <span class="powerup-icon">🛡️</span>
+                            <div class="powerup-info">
+                                <strong>无敌道具</strong>
+                                <p>获得 5 秒无敌状态，可穿墙和穿身体</p>
+                                <p>玩法：在被困时使用，快速脱离危险区域</p>
+                            </div>
+                        </div>
+                        <div class="powerup-detail">
+                            <span class="powerup-icon">🧲</span>
+                            <div class="powerup-info">
+                                <strong>磁铁道具</strong>
+                                <p>开启磁铁效应，将周围食物吸向蛇头，持续 5 秒</p>
+                                <p>玩法：在食物分散时收集食物，提高效率</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>游戏规则</h3>
+                    <ul>
+                        <li>撞墙或撞到自己身体则游戏结束</li>
+                        <li>撞到障碍物则游戏结束（除非处于无敌状态）</li>
+                        <li>每吃一个食物，蛇长度增加 1</li>
+                        <li>不同食物提供不同分数</li>
+                    </ul>
+                </div>
+            </details>
+        </div>
+
+        <canvas id="gameCanvas" width="300" height="300"></canvas>
+
+        <div class="controls">
+            <button id="startBtn">开始</button>
+            <button id="pauseBtn">暂停</button>
+            <button id="restartBtn">重新开始</button>
+        </div>
+
+        <div id="gameOver" class="game-over hidden">
+            <h2>游戏结束!</h2>
+            <p>最终分数: <span id="final-score">0</span></p>
+            <button id="playAgainBtn">再玩一次</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

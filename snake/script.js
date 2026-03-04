@@ -1,0 +1,989 @@
+// Snake class to manage the snake properties and behavior
+class Snake {
+    constructor() {
+        this.body = [
+            {x: 10, y: 10},
+            {x: 9, y: 10},
+            {x: 8, y: 10}
+        ]; // Start with 3 segments
+        this.direction = 'right';
+        this.nextDirection = 'right';
+        this.size = 20; // Size of each segment in pixels
+
+        // Special abilities and effects
+        this.speedBoost = false;
+        this.invincible = false;
+        this.invincibleTime = 0;
+        this.hasMagnet = false;
+        this.magnetRange = 3; // Cells around the snake
+        this.invisible = false;
+        this.invisibleTime = 0;
+
+        // Timers for effects
+        this.boostEndTime = 0;
+        this.invincibleEndTime = 0;
+        this.magnetEndTime = 0;
+    }
+
+    // Move the snake by updating its body positions
+    move() {
+        // Update direction based on nextDirection (to prevent 180-degree turns)
+        this.direction = this.nextDirection;
+
+        // Save the current head position
+        const head = {...this.body[0]};
+
+        // Calculate new head position based on direction
+        switch(this.direction) {
+            case 'up':
+                head.y -= 1;
+                break;
+            case 'down':
+                head.y += 1;
+                break;
+            case 'left':
+                head.x -= 1;
+                break;
+            case 'right':
+                head.x += 1;
+                break;
+        }
+
+        // Add new head to the beginning of the body
+        this.body.unshift(head);
+
+        // Remove the tail (last element) unless the snake has grown
+        this.body.pop();
+    }
+
+    // Change direction, but prevent 180-degree turns
+    changeDirection(newDirection) {
+        // Prevent turning back on itself (e.g., going up then immediately down)
+        if (
+            (this.direction === 'up' && newDirection === 'down') ||
+            (this.direction === 'down' && newDirection === 'up') ||
+            (this.direction === 'left' && newDirection === 'right') ||
+            (this.direction === 'right' && newDirection === 'left')
+        ) {
+            return;
+        }
+
+        this.nextDirection = newDirection;
+    }
+
+    // Grow the snake by adding a segment at the tail
+    grow() {
+        // Add a new segment at the position of the current tail
+        const tail = {...this.body[this.body.length - 1]};
+        this.body.push(tail);
+    }
+
+    // Apply a power-up effect
+    applyPowerUp(powerType) {
+        const currentTime = Date.now();
+        const effectDuration = 5000; // 5 seconds
+
+        switch(powerType) {
+            case 'speed':
+                this.speedBoost = true;
+                this.boostEndTime = currentTime + effectDuration;
+                break;
+            case 'invincible':
+                this.invincible = true;
+                this.invincibleEndTime = currentTime + effectDuration;
+                break;
+            case 'magnet':
+                this.hasMagnet = true;
+                this.magnetEndTime = currentTime + effectDuration;
+                break;
+        }
+    }
+
+    // Update active effects
+    updateEffects() {
+        const currentTime = Date.now();
+
+        if (currentTime > this.boostEndTime) {
+            this.speedBoost = false;
+        }
+        if (currentTime > this.invincibleEndTime) {
+            this.invincible = false;
+        }
+        if (currentTime > this.magnetEndTime) {
+            this.hasMagnet = false;
+        }
+    }
+
+    // Check if the snake collides with itself or the walls
+    checkCollision(width, height) {
+        const head = this.body[0];
+
+        // Check wall collision
+        if (
+            head.x < 0 ||
+            head.x >= width ||
+            head.y < 0 ||
+            head.y >= height
+        ) {
+            return !this.invincible; // Can't die if invincible
+        }
+
+        // Check self collision (skip the head)
+        for (let i = 1; i < this.body.length; i++) {
+            if (head.x === this.body[i].x && head.y === this.body[i].y) {
+                return !this.invincible; // Can't die if invincible
+            }
+        }
+
+        return false;
+    }
+
+    // Draw the snake on the canvas
+    draw(ctx) {
+        // Update effects before drawing
+        this.updateEffects();
+
+        // Draw the head differently (with different color)
+        if (this.invincible) {
+            // Flash when invincible
+            const flash = Math.floor(Date.now() / 200) % 2;
+            ctx.fillStyle = flash ? '#4CAF50' : '#FFEB3B'; // Green/amber flashing
+        } else {
+            ctx.fillStyle = '#4CAF50'; // Green head
+        }
+
+        ctx.fillRect(
+            this.body[0].x * this.size,
+            this.body[0].y * this.size,
+            this.size,
+            this.size
+        );
+
+        // Draw the rest of the body
+        ctx.fillStyle = '#8BC34A'; // Lighter green body
+        for (let i = 1; i < this.body.length; i++) {
+            ctx.fillRect(
+                this.body[i].x * this.size,
+                this.body[i].y * this.size,
+                this.size,
+                this.size
+            );
+        }
+    }
+}
+
+// Food class to manage food properties and generation
+class Food {
+    constructor(width, height) {
+        this.foods = []; // Array to hold multiple food items
+        this.maxFoods = 5; // Maximum number of foods allowed at once
+        this.size = 20; // Size of food in pixels
+        this.width = width;
+        this.height = height;
+
+        // Define different food types and their properties
+        this.foodTypes = {
+            normal: { color: '#FF5252', points: 10, effect: null, icon: '🍎' },
+            speed: { color: '#2196F3', points: 20, effect: 'speed', icon: '⚡' },
+            invincible: { color: '#FFEB3B', points: 30, effect: 'invincible', icon: '🛡️' },
+            magnet: { color: '#9C27B0', points: 30, effect: 'magnet', icon: '🧲' }  // 调整为30分以保持平衡
+        };
+
+        this.generateInitialFoods();
+
+        // Properties to store currently active effect
+        this.currentActiveEffect = null;
+        this.activeEffectStartTime = null;
+        this.activeEffectDuration = 5000; // 5 seconds in ms
+        this.effectTimer = null;
+    }
+
+    // Generate initial food items (up to maxFoods)
+    generateInitialFoods() {
+        const foodKeys = Object.keys(this.foodTypes);
+
+        for (let i = 0; i < this.maxFoods; i++) {
+            // Select a random food type
+            const randomType = foodKeys[Math.floor(Math.random() * foodKeys.length)];
+
+            // Generate a new food item
+            const newFood = this.createRandomFood(randomType);
+
+            // Add it to the foods array
+            this.foods.push(newFood);
+        }
+    }
+
+    // Create a single food item with random position
+    createRandomFood(type = null) {
+        // If no type specified, select one randomly
+        const foodType = type || this.getRandomFoodType();
+
+        // Generate random position
+        const position = {
+            x: Math.floor(Math.random() * this.width),
+            y: Math.floor(Math.random() * this.height)
+        };
+
+        return {
+            position: position,
+            type: foodType,
+            properties: this.foodTypes[foodType]
+        };
+    }
+
+    // Get a random food type (weighted towards normal food)
+    getRandomFoodType() {
+        const rand = Math.random();
+        if (rand < 0.5) {
+            return 'normal';
+        } else if (rand < 0.65) {
+            return 'speed';
+        } else if (rand < 0.8) {
+            return 'invincible';
+        } else {
+            return 'magnet';
+        }
+    }
+
+    // Generate a new food item, making sure it doesn't overlap with existing ones
+    generateFood(snakeBody = [], obstacles = []) {
+        if (this.foods.length >= this.maxFoods) {
+            // If we already have maximum foods, return without adding more
+            return;
+        }
+
+        // Create a new food item
+        let newFood = this.createRandomFood();
+
+        // Check if position is blocked by existing food, snake, or obstacles
+        let positionValid = false;
+        let attempts = 0;
+        const maxAttempts = 50; // Limit attempts to avoid infinite loops
+
+        while (!positionValid && attempts < maxAttempts) {
+            // Check if position is on snake body
+            let onSnake = false;
+            for (const segment of snakeBody) {
+                if (segment.x === newFood.position.x && segment.y === newFood.position.y) {
+                    onSnake = true;
+                    break;
+                }
+            }
+
+            // Check if position is on obstacles
+            let onObstacle = false;
+            for (const obstacle of obstacles) {
+                if (obstacle.x === newFood.position.x && obstacle.y === newFood.position.y) {
+                    onObstacle = true;
+                    break;
+                }
+            }
+
+            // Check if position is on existing food
+            let onExistingFood = false;
+            for (const food of this.foods) {
+                if (food.position.x === newFood.position.x && food.position.y === newFood.position.y) {
+                    onExistingFood = true;
+                    break;
+                }
+            }
+
+            // If position is valid, add the food
+            if (!onSnake && !onObstacle && !onExistingFood) {
+                positionValid = true;
+            } else {
+                // Generate a new position and try again
+                newFood = this.createRandomFood(newFood.type);
+                attempts++;
+            }
+        }
+
+        // If we found a valid position, add the food
+        if (positionValid) {
+            this.foods.push(newFood);
+        }
+    }
+
+    // Remove a food item at a specific position
+    removeFoodAtPosition(x, y) {
+        const index = this.foods.findIndex(food =>
+            food.position.x === x && food.position.y === y
+        );
+
+        if (index !== -1) {
+            return this.foods.splice(index, 1)[0]; // Return the removed food
+        }
+
+        return null;
+    }
+
+    // Get food properties at a specific position
+    getFoodAtPosition(x, y) {
+        return this.foods.find(food =>
+            food.position.x === x && food.position.y === y
+        );
+    }
+
+    // Check if there's food at a specific position
+    isFoodAtPosition(x, y) {
+        return this.foods.some(food =>
+            food.position.x === x && food.position.y === y
+        );
+    }
+
+    // Draw all foods on the canvas
+    draw(ctx) {
+        for (const food of this.foods) {
+            const pos = food.position;
+
+            // Draw food as an emoji/icon directly
+            ctx.font = `${this.size}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(
+                food.properties.icon,
+                pos.x * this.size + this.size / 2,
+                pos.y * this.size + this.size / 2
+            );
+        }
+    }
+
+    // Show tooltip for consumed food
+    showTooltip(foodType) {
+        this.currentConsumedFood = foodType;
+
+        // Clear any existing timer
+        if (this.tooltipTimer) {
+            clearTimeout(this.tooltipTimer);
+        }
+
+        // Auto-hide tooltip after 2 seconds
+        this.tooltipTimer = setTimeout(() => {
+            this.hideTooltip();
+        }, 2000);
+    }
+
+    // Hide tooltip
+    hideTooltip() {
+        this.currentConsumedFood = null;
+    }
+
+    // Draw tooltip if active
+    drawTooltip(ctx, canvas) {
+        if (this.currentConsumedFood) {
+            const foodTypeInfo = this.foodTypes[this.currentConsumedFood];
+            let foodName = '';
+
+            // Translate food type to Chinese
+            switch(this.currentConsumedFood) {
+                case 'normal':
+                    foodName = '普通食物';
+                    break;
+                case 'speed':
+                    foodName = '加速道具';
+                    break;
+                case 'invincible':
+                    foodName = '无敌道具';
+                    break;
+                case 'magnet':
+                    foodName = '磁铁道具';
+                    break;
+                default:
+                    foodName = '未知道具';
+            }
+
+            // Draw tooltip background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(10, 10, 200, 40);
+
+            // Draw tooltip text
+            ctx.fillStyle = 'white';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`获得: ${foodName}`, 20, 30);
+        }
+    }
+
+    // Clean up excess foods if needed (not exceeding maxFoods)
+    cleanup() {
+        if (this.foods.length > this.maxFoods) {
+            // Remove excess foods (keeping the first maxFoods)
+            this.foods = this.foods.slice(0, this.maxFoods);
+        }
+    }
+
+    // Activate effect display when food is consumed
+    activateEffect(effectType) {
+        this.currentActiveEffect = effectType;
+        this.activeEffectStartTime = Date.now();
+
+        // Clear any existing timer
+        if (this.effectTimer) {
+            clearInterval(this.effectTimer);
+        }
+
+        // Set up timer to clear effect after duration
+        this.effectTimer = setInterval(() => {
+            const elapsed = Date.now() - this.activeEffectStartTime;
+            if (elapsed >= this.activeEffectDuration) {
+                this.clearEffect();
+            }
+        }, 100); // Update every 100ms for smooth countdown
+    }
+
+    // Clear active effect
+    clearEffect() {
+        this.currentActiveEffect = null;
+        this.activeEffectStartTime = null;
+
+        if (this.effectTimer) {
+            clearInterval(this.effectTimer);
+            this.effectTimer = null;
+        }
+    }
+
+    // Get remaining time for active effect
+    getRemainingTime() {
+        if (!this.activeEffectStartTime) {
+            return 0;
+        }
+
+        const elapsed = Date.now() - this.activeEffectStartTime;
+        const remaining = Math.max(0, (this.activeEffectDuration - elapsed) / 1000); // Convert to seconds
+        return Math.ceil(remaining); // Round up to nearest second
+    }
+
+    // Draw active effect display if there is one
+    drawEffectDisplay(ctx) {
+        if (this.currentActiveEffect) {
+            const remainingSeconds = this.getRemainingTime();
+
+            if (remainingSeconds > 0) {
+                let effectName = '';
+
+                // Translate effect type to Chinese
+                switch(this.currentActiveEffect) {
+                    case 'speed':
+                        effectName = '加速中';
+                        break;
+                    case 'invincible':
+                        effectName = '无敌中';
+                        break;
+                    case 'magnet':
+                        effectName = '磁铁中';
+                        break;
+                    default:
+                        effectName = '特殊效果';
+                }
+
+                // Draw effect background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(10, 10, 180, 40);
+
+                // Draw effect text
+                ctx.fillStyle = 'white';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`${effectName} (${remainingSeconds}s)`, 20, 30);
+            } else {
+                // Effect time has expired, clear it
+                this.clearEffect();
+            }
+        }
+    }
+}
+
+// Obstacles class for environmental interaction
+class Obstacles {
+    constructor(width, height) {
+        this.obstacles = [];
+        this.width = width;
+        this.height = height;
+        // Don't generate obstacles here, wait for explicit call with difficulty settings
+    }
+
+    // Generate obstacles on the game board
+    generateObstacles(difficultySetting) {
+        this.obstacles = [];
+
+        // Get current difficulty settings for obstacle count
+        const obstaclePercentage = difficultySetting.obstacleCount || 0.01;
+
+        // Calculate number of obstacles based on difficulty
+        const numObstacles = Math.floor((this.width * this.height) * obstaclePercentage);
+
+        for (let i = 0; i < numObstacles; i++) {
+            // Random position
+            const x = Math.floor(Math.random() * this.width);
+            const y = Math.floor(Math.random() * this.height);
+
+            // Make sure it's not at the center where snake starts
+            if (!(x >= 8 && x <= 12 && y >= 8 && y <= 12)) {
+                this.obstacles.push({x, y});
+            }
+        }
+    }
+
+    // Draw obstacles on the canvas
+    draw(ctx, size) {
+        ctx.fillStyle = '#795548'; // Brown color for obstacles
+        for (const obstacle of this.obstacles) {
+            ctx.fillRect(
+                obstacle.x * size,
+                obstacle.y * size,
+                size,
+                size
+            );
+
+            // Add pattern to obstacle
+            ctx.fillStyle = '#5D4037';
+            ctx.fillRect(
+                obstacle.x * size + 3,
+                obstacle.y * size + 3,
+                size - 6,
+                size - 6
+            );
+            ctx.fillStyle = '#795548';
+        }
+    }
+
+    // Check if position is blocked by an obstacle
+    isBlocked(x, y) {
+        for (const obstacle of this.obstacles) {
+            if (obstacle.x === x && obstacle.y === y) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+class DifficultyManager {
+    constructor() {
+        this.difficulties = {
+            easy: {
+                speed: 240, // milliseconds between moves (slower = 2x original)
+                gridSize: 20, // size of grid cells
+                obstacleCount: 0.01 // percentage of obstacles (half of original)
+            },
+            medium: {
+                speed: 200, // slower = 2x original
+                gridSize: 20,
+                obstacleCount: 0.02 // half of original
+            },
+            hard: {
+                speed: 160, // slower = 2x original
+                gridSize: 20,
+                obstacleCount: 0.03 // half of original
+            },
+            expert: {
+                speed: 120, // slower = 2x original
+                gridSize: 20,
+                obstacleCount: 0.04 // half of original
+            }
+        };
+        this.currentDifficulty = 'medium';
+    }
+
+    // Get the current difficulty settings
+    getDifficultySettings() {
+        return this.difficulties[this.currentDifficulty];
+    }
+
+    // Set a new difficulty level
+    setDifficulty(difficulty) {
+        if (this.difficulties.hasOwnProperty(difficulty)) {
+            this.currentDifficulty = difficulty;
+        } else {
+            console.warn(`Invalid difficulty level: ${difficulty}`);
+        }
+    }
+
+    // Get default difficulty settings
+    getDefaultDifficulties() {
+        return this.difficulties;
+    }
+}
+
+// Score manager class to handle scoring and high scores
+class ScoreManager {
+    constructor() {
+        this.currentScore = 0;
+        this.highScore = this.loadHighScore();
+    }
+
+    // Update the current score
+    updateScore(points = 10) {
+        this.currentScore += points;
+        // Update high score if current score is higher
+        if (this.currentScore > this.highScore) {
+            this.highScore = this.currentScore;
+            this.saveHighScore();
+        }
+    }
+
+    // Save high score to localStorage
+    saveHighScore() {
+        localStorage.setItem('snakeHighScore', this.highScore.toString());
+    }
+
+    // Load high score from localStorage
+    loadHighScore() {
+        const savedScore = localStorage.getItem('snakeHighScore');
+        return savedScore ? parseInt(savedScore) : 0;
+    }
+
+    // Get the current high score
+    getHighScore() {
+        return this.highScore;
+    }
+
+    // Reset the current score
+    resetScore() {
+        this.currentScore = 0;
+    }
+
+    // Get the current score
+    getCurrentScore() {
+        return this.currentScore;
+    }
+}
+
+// Main Game class to manage the entire game
+class Game {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.snake = new Snake();
+
+        // Calculate grid dimensions based on canvas size and snake segment size
+        this.gridWidth = Math.floor(this.canvas.width / this.snake.size);
+        this.gridHeight = Math.floor(this.canvas.height / this.snake.size);
+
+        this.food = new Food(this.gridWidth, this.gridHeight);
+        this.difficultyManager = new DifficultyManager();
+        this.scoreManager = new ScoreManager();
+        this.obstacles = new Obstacles(this.gridWidth, this.gridHeight);
+        this.obstacles.generateObstacles(this.difficultyManager.getDifficultySettings());
+
+        // Generate initial foods avoiding snake and obstacles
+        this.food.foods = []; // Clear initial array
+        for (let i = 0; i < this.food.maxFoods; i++) {
+            this.food.generateFood(this.snake.body, this.obstacles.obstacles);
+        }
+
+        this.gameInterval = null;
+        this.isPaused = false;
+        this.isGameOver = false;
+
+        this.setupEventListeners();
+        this.updateScoreDisplay();
+    }
+
+    // Set up event listeners for controls and keyboard
+    setupEventListeners() {
+        // Button event listeners
+        document.getElementById('startBtn').addEventListener('click', () => this.start());
+        document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+        document.getElementById('restartBtn').addEventListener('click', () => this.restart());
+        document.getElementById('playAgainBtn').addEventListener('click', () => this.restart());
+
+        // Keyboard event listener for controlling the snake
+        document.addEventListener('keydown', (e) => {
+            if (this.isGameOver) {
+                // Allow restarting the game with spacebar when game is over
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    this.restart();
+                }
+                return;
+            }
+
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    this.snake.changeDirection('up');
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    this.snake.changeDirection('down');
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    this.snake.changeDirection('left');
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    this.snake.changeDirection('right');
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    if (this.isPaused) {
+                        this.resume();
+                    } else {
+                        this.pause();
+                    }
+                    break;
+            }
+        });
+
+        // Difficulty change listener
+        document.getElementById('difficulty').addEventListener('change', (e) => {
+            this.difficultyManager.setDifficulty(e.target.value);
+            if (!this.isGameOver && !this.isPaused) {
+                // Restart the game loop with new difficulty
+                this.stop();
+                this.start();
+            }
+        });
+    }
+
+    // Initialize the game
+    init() {
+        this.reset();
+        this.draw();
+    }
+
+    // Start the game
+    start() {
+        if (this.isGameOver) {
+            this.restart();
+            return;
+        }
+
+        if (this.gameInterval) {
+            clearInterval(this.gameInterval);
+        }
+
+        const speed = this.difficultyManager.getDifficultySettings().speed;
+        this.isPaused = false;
+        this.isGameOver = false;
+        document.querySelector('.game-over').classList.add('hidden');
+
+        this.gameInterval = setInterval(() => {
+            this.gameLoop();
+        }, speed);
+    }
+
+    // Pause the game
+    pause() {
+        if (!this.isPaused && !this.isGameOver) {
+            clearInterval(this.gameInterval);
+            this.isPaused = true;
+        }
+    }
+
+    // Resume the game
+    resume() {
+        if (this.isPaused && !this.isGameOver) {
+            this.start();
+        }
+    }
+
+    // Handle game over
+    gameOver() {
+        this.isGameOver = true;
+        clearInterval(this.gameInterval);
+
+        document.getElementById('final-score').textContent = this.scoreManager.getCurrentScore();
+        document.querySelector('.game-over').classList.remove('hidden');
+    }
+
+    // Main game loop
+    gameLoop() {
+        if (this.isPaused || this.isGameOver) return;
+
+        this.update();
+        this.draw();
+    }
+
+    // Update game state
+    update() {
+        // Move the snake
+        this.snake.move();
+
+        // Check if snake ate any of the foods
+        const head = this.snake.body[0];
+
+        // Find if snake head is on any food
+        const eatenFood = this.food.getFoodAtPosition(head.x, head.y);
+
+        if (eatenFood) {
+            // Apply power-up effect if applicable
+            if (eatenFood.properties.effect) {
+                this.snake.applyPowerUp(eatenFood.properties.effect);
+
+                // Activate effect display
+                this.food.activateEffect(eatenFood.properties.effect);
+            }
+
+            // Increase score based on food type
+            this.scoreManager.updateScore(eatenFood.properties.points);
+            this.updateScoreDisplay();
+
+            // Grow the snake
+            this.snake.grow();
+
+            // Remove the eaten food
+            this.food.removeFoodAtPosition(head.x, head.y);
+
+            // Generate a new food (make sure it doesn't appear on the snake or obstacles)
+            this.food.generateFood(this.snake.body, this.obstacles.obstacles);
+        }
+
+        // Check for collisions with obstacles
+        if (this.obstacles.isBlocked(head.x, head.y)) {
+            if (!this.snake.invincible) {
+                this.gameOver();
+                return;
+            }
+        }
+
+        // Check for collisions with walls or self
+        if (this.snake.checkCollision(this.gridWidth, this.gridHeight)) {
+            this.gameOver();
+        }
+
+        // Magnet effect - pull nearby food if active
+        if (this.snake.hasMagnet) {
+            // Iterate through all foods to see which ones are in range
+            for (const foodItem of this.food.foods) {
+                // Check if food is within magnet range
+                const dx = Math.abs(head.x - foodItem.position.x);
+                const dy = Math.abs(head.y - foodItem.position.y);
+
+                // If food is within range
+                if (dx <= this.snake.magnetRange && dy <= this.snake.magnetRange) {
+                    // Move food closer to snake head
+                    if (dx > 0 && Math.random() < 0.3) { // Reduced probability to avoid chaotic movement
+                        if (foodItem.position.x < head.x) {
+                            foodItem.position.x++;
+                        } else if (foodItem.position.x > head.x) {
+                            foodItem.position.x--;
+                        }
+                    }
+
+                    if (dy > 0 && Math.random() < 0.3) { // Reduced probability to avoid chaotic movement
+                        if (foodItem.position.y < head.y) {
+                            foodItem.position.y++;
+                        } else if (foodItem.position.y > head.y) {
+                            foodItem.position.y--;
+                        }
+                    }
+
+                    // Ensure food doesn't appear on obstacles or other foods
+                    if (this.obstacles.isBlocked(foodItem.position.x, foodItem.position.y)) {
+                        // If the food got moved to an obstacle, try to move it to a free spot nearby
+                        this.food.generateFood(this.snake.body, this.obstacles.obstacles);
+                    }
+                }
+            }
+        }
+    }
+
+    // Draw everything on the canvas
+    draw() {
+        // Clear the canvas
+        this.ctx.fillStyle = '#111';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw grid lines (optional, for better visibility)
+        this.ctx.strokeStyle = '#222';
+        this.ctx.lineWidth = 0.5;
+        for (let x = 0; x <= this.canvas.width; x += this.snake.size) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, this.canvas.height);
+            this.ctx.stroke();
+        }
+        for (let y = 0; y <= this.canvas.height; y += this.snake.size) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.canvas.width, y);
+            this.ctx.stroke();
+        }
+
+        // Draw obstacles
+        this.obstacles.draw(this.ctx, this.snake.size);
+
+        // Draw the snake
+        this.snake.draw(this.ctx);
+
+        // Draw the foods
+        this.food.draw(this.ctx);
+
+        // Draw the active effect display
+        this.food.drawEffectDisplay(this.ctx);
+    }
+
+    // Reset the game to initial state
+    reset() {
+        // Stop the game loop if running
+        this.stop();
+
+        // Reset snake
+        this.snake = new Snake();
+
+        // Calculate grid dimensions
+        this.gridWidth = Math.floor(this.canvas.width / this.snake.size);
+        this.gridHeight = Math.floor(this.canvas.height / this.snake.size);
+
+        // Reset food and obstacles
+        this.food = new Food(this.gridWidth, this.gridHeight);
+        this.obstacles = new Obstacles(this.gridWidth, this.gridHeight);
+        this.obstacles.generateObstacles(this.difficultyManager.getDifficultySettings());
+
+        // Generate initial foods avoiding snake and obstacles
+        this.food.foods = []; // Clear initial array
+        for (let i = 0; i < this.food.maxFoods; i++) {
+            this.food.generateFood(this.snake.body, this.obstacles.obstacles);
+        }
+
+        // Reset game state
+        this.isPaused = false;
+        this.isGameOver = false;
+
+        // Reset score
+        this.scoreManager.resetScore();
+        this.updateScoreDisplay();
+
+        // Hide game over screen
+        document.querySelector('.game-over').classList.add('hidden');
+
+        // Draw initial state
+        this.draw();
+    }
+
+    // Restart the game
+    restart() {
+        this.reset();
+        this.start();
+    }
+
+    // Stop the game loop
+    stop() {
+        if (this.gameInterval) {
+            clearInterval(this.gameInterval);
+            this.gameInterval = null;
+        }
+    }
+
+    // Change the game difficulty
+    changeDifficulty(difficulty) {
+        this.difficultyManager.setDifficulty(difficulty);
+    }
+
+    // Update the score display on the page
+    updateScoreDisplay() {
+        document.getElementById('score').textContent = this.scoreManager.getCurrentScore();
+        document.getElementById('high-score').textContent = this.scoreManager.getHighScore();
+    }
+}
+
+// Initialize the game when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    const game = new Game('gameCanvas');
+    game.init();
+});
