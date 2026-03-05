@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>疯狂的小鸟</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #87CEEB;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+
+        #gameCanvas {
+            border: 2px solid #333;
+            background: linear-gradient(to bottom, #87CEEB 60%, #228B22 60%);
+        }
+
+        #gameUI {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: white;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.6)), url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="20" cy="20" r="3" fill="%23FFD700" opacity="0.6"/><circle cx="50" cy="30" r="2" fill="%23FFD700" opacity="0.6"/><circle cx="70" cy="10" r="2" fill="%23FFD700" opacity="0.6"/></svg>');
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+            text-align: center;
+        }
+
+        #startScreen h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            color: #FFD700;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+
+        #startButton {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
+            background: linear-gradient(to bottom, #FF6B6B, #FF8E53);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+
+        #startButton:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            background: linear-gradient(to bottom, #FF7B7B, #FF9E63);
+        }
+
+        #instructions {
+            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            font-size: 16px;
+            max-width: 80%;
+        }
+
+        .bird-counter {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: white;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="gameUI">
+            <div>分数: <span id="score">0</span></div>
+            <div>关卡: <span id="level">1</span></div>
+            <div>发射: <span id="shots">0</span></div>
+        </div>
+        <div class="bird-counter">
+            小鸟: <span id="birdCount">1</span>
+        </div>
+        <div id="startScreen">
+            <h1>🐦 疯狂的小鸟 🐦</h1>
+            <div id="instructions">
+                <p>🎯 使用鼠标瞄准，点击并拖拽拉弓</p>
+                <p>💥 击中绿色猪头获得分数</p>
+                <p>🔄 按 R 键重新开始游戏</p>
+            </div>
+            <button id="startButton">🎮 开始游戏</button>
+        </div>
+    </div>
+
+    <script>
+        // 游戏变量
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const shotsElement = document.getElementById('shots'); // 发射次数元素
+        const startScreen = document.getElementById('startScreen');
+        const startButton = document.getElementById('startButton');
+
+        let gameRunning = false;
+        let score = 0;
+        let level = 1;
+        let shotsFired = 0; // 发射次数统计
+        let birds = [];
+        let pigs = [];
+        let blocks = [];
+        let particles = []; // 添加粒子数组
+        let slingshotX = 150;
+        let slingshotY = 400;
+        let currentBird = null;
+        let trajectory = [];
+        let mouseDown = false;
+        let mouseX = 0;
+        let mouseY = 0;
+
+        // 鸟类
+        class Bird {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 15;
+                this.vx = 0;
+                this.vy = 0;
+                this.launched = false;
+                this.active = true;
+                this.lastActive = true; // 用于跟踪状态变化
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                // 渐变填充让小鸟更立体
+                const gradient = ctx.createRadialGradient(
+                    this.x - 5, this.y - 5, 1,
+                    this.x, this.y, this.radius
+                );
+                gradient.addColorStop(0, '#FFFF99');
+                gradient.addColorStop(1, '#FFD700');
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                ctx.strokeStyle = '#FFA500';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 画眼睛
+                ctx.beginPath();
+                ctx.arc(this.x + 8, this.y - 5, 3, 0, Math.PI * 2);
+                ctx.fillStyle = 'black';
+                ctx.fill();
+
+                // 画翅膀
+                ctx.beginPath();
+                ctx.ellipse(this.x - 5, this.y + 3, 8, 4, Math.PI/4, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFA500';
+                ctx.fill();
+            }
+
+            update() {
+                if (!this.launched) return;
+
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.3; // 降低重力使物理更自然
+
+                // 边界检测 - 小鸟离开画布的任意一边都应该被标记为非活跃
+                if (this.x < -this.radius || this.x > canvas.width + this.radius ||
+                    this.y > canvas.height + this.radius) {
+                    this.active = false;
+                    return;
+                }
+
+                // 边界检测 - 限制水平移动
+                if (this.x < this.radius) {
+                    this.x = this.radius;
+                    this.vx *= -0.6; // 反弹并减少能量
+                } else if (this.x > canvas.width - this.radius) {
+                    this.x = canvas.width - this.radius;
+                    this.vx *= -0.6;
+                }
+
+                // 地面碰撞
+                if (this.y > canvas.height - this.radius) {
+                    this.y = canvas.height - this.radius;
+                    this.vy *= -0.4; // 垂直反弹
+                    this.vx *= 0.8;  // 水平阻力
+
+                    // 如果速度很小，标记为非活跃
+                    if (Math.abs(this.vy) < 0.5 && Math.abs(this.vx) < 0.5) {
+                        this.active = false;
+                    }
+                }
+            }
+        }
+
+        // 猪类
+        class Pig {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 20;
+                this.health = 1;
+                this.active = true;
+            }
+
+            draw() {
+                // 猪的身体
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                const gradient = ctx.createRadialGradient(
+                    this.x - 5, this.y - 5, 1,
+                    this.x, this.y, this.radius
+                );
+                gradient.addColorStop(0, '#7FFF00');
+                gradient.addColorStop(1, '#32CD32');
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                ctx.strokeStyle = '#228B22';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 猪鼻子
+                ctx.beginPath();
+                ctx.arc(this.x, this.y + 3, 8, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFB6C1';
+                ctx.fill();
+                ctx.stroke();
+
+                // 鼻孔
+                ctx.beginPath();
+                ctx.arc(this.x - 3, this.y + 3, 2, 0, Math.PI * 2);
+                ctx.arc(this.x + 3, this.y + 3, 2, 0, Math.PI * 2);
+                ctx.fillStyle = '#FF69B4';
+                ctx.fill();
+
+                // 眼睛
+                ctx.beginPath();
+                ctx.arc(this.x - 7, this.y - 5, 4, 0, Math.PI * 2);
+                ctx.arc(this.x + 7, this.y - 5, 4, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(this.x - 7, this.y - 5, 2, 0, Math.PI * 2);
+                ctx.arc(this.x + 7, this.y - 5, 2, 0, Math.PI * 2);
+                ctx.fillStyle = 'black';
+                ctx.fill();
+            }
+
+            checkCollision(bird) {
+                const dx = this.x - bird.x;
+                const dy = this.y - bird.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < this.radius + bird.radius) {
+                    this.health--;
+                    // 添加撞击特效
+                    createParticles(bird.x, bird.y, '#32CD32');
+                    if (this.health <= 0) {
+                        this.active = false;
+                        score += 100;
+                        scoreElement.textContent = score; // 确保分数立即更新显示
+                    }
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        // 方块类
+        class Block {
+            constructor(x, y, width, height) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.health = 2;
+                this.active = true;
+            }
+
+            draw() {
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.strokeStyle = '#654321';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x, this.y, this.width, this.height);
+            }
+
+            checkCollision(bird) {
+                if (bird.x + bird.radius > this.x &&
+                    bird.x - bird.radius < this.x + this.width &&
+                    bird.y + bird.radius > this.y &&
+                    bird.y - bird.radius < this.y + this.height) {
+
+                    // 简单碰撞响应
+                    const centerX = this.x + this.width / 2;
+                    const centerY = this.y + this.height / 2;
+                    const dx = bird.x - centerX;
+                    const dy = bird.y - centerY;
+
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        bird.vx *= -0.4;
+                    } else {
+                        bird.vy *= -0.4;
+                    }
+
+                    this.health--;
+                    // 添加撞击特效
+                    createParticles(bird.x, bird.y, '#8B4513');
+                    if (this.health <= 0) {
+                        this.active = false;
+                        score += 50;
+                        scoreElement.textContent = score; // 确保分数立即更新显示
+                    }
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        // 计算轨迹
+        function calculateTrajectory(startX, startY, velX, velY) {
+            const points = [];
+            let x = startX;
+            let y = startY;
+            let vx = velX;
+            let vy = velY;
+
+            for (let i = 0; i < 50; i++) {
+                x += vx;
+                y += vy;
+                vy += 0.3; // 保持一致的重力值
+
+                points.push({x: x, y: y});
+
+                if (y > canvas.height) break;
+            }
+
+            return points;
+        }
+
+        // 小鸟计数元素
+        const birdCountElement = document.getElementById('birdCount');
+
+        // 初始化游戏
+        function initGame() {
+            birds = [];
+            pigs = [];
+            blocks = [];
+            shotsFired = 0; // 重置发射次数
+
+            scoreElement.textContent = score; // 确保显示当前分数
+            levelElement.textContent = level; // 确保显示当前关卡
+            shotsElement.textContent = shotsFired; // 确保显示发射次数
+
+            // 创建初始小鸟
+            const initialBird = new Bird(slingshotX, slingshotY);
+            birds.push(initialBird);
+            currentBird = initialBird;
+            birdCountElement.textContent = birds.length;
+
+            // 根据关卡生成不同布局
+            generateLevel();
+        }
+
+        // 生成关卡布局
+        function generateLevel() {
+            // 清除现有敌人和障碍
+            pigs = [];
+            blocks = [];
+
+            // 关卡1
+            if (level === 1) {
+                // 创建一些猪
+                pigs.push(new Pig(600, 450));
+                pigs.push(new Pig(650, 450));
+                pigs.push(new Pig(625, 400));
+
+                // 创建一些方块作为障碍物
+                blocks.push(new Block(580, 400, 40, 80));
+                blocks.push(new Block(640, 400, 40, 80));
+                blocks.push(new Block(600, 350, 80, 20));
+            }
+            // 关卡2
+            else if (level === 2) {
+                pigs.push(new Pig(600, 450));
+                pigs.push(new Pig(630, 450));
+                pigs.push(new Pig(660, 450));
+                pigs.push(new Pig(630, 400));
+
+                blocks.push(new Block(580, 400, 30, 80));
+                blocks.push(new Block(670, 400, 30, 80));
+                blocks.push(new Block(600, 350, 100, 20));
+                blocks.push(new Block(610, 300, 40, 20));
+            }
+            // 关卡3及以上
+            else {
+                // 随着关卡增加，难度递增
+                const pigsToAdd = Math.min(level, 6); // 最多6只猪
+                for (let i = 0; i < pigsToAdd; i++) {
+                    const x = 580 + (i % 3) * 40;
+                    const y = 450 - Math.floor(i / 3) * 50;
+                    pigs.push(new Pig(x, y));
+                }
+
+                // 添加更多方块
+                const blocksToAdd = Math.min(Math.floor(level / 2) + 3, 8); // 随着关卡增加方块数
+                for (let i = 0; i < blocksToAdd; i++) {
+                    const x = 550 + (i % 4) * 50;
+                    const y = 400 - (i % 2) * 50;
+                    const width = 30 + (i % 3) * 10;
+                    const height = 30 + (i % 2) * 20;
+                    blocks.push(new Block(x, y, width, height));
+                }
+            }
+        }
+
+        // 绘制弹弓
+        function drawSlingshot() {
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+
+            // 左边支臂
+            ctx.beginPath();
+            ctx.moveTo(slingshotX - 20, slingshotY + 30);
+            ctx.lineTo(slingshotX - 20, slingshotY - 50);
+            ctx.stroke();
+
+            // 右边支臂
+            ctx.beginPath();
+            ctx.moveTo(slingshotX + 20, slingshotY + 30);
+            ctx.lineTo(slingshotX + 20, slingshotY - 50);
+            ctx.stroke();
+
+            // 底座
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(slingshotX - 30, slingshotY + 30, 60, 20);
+
+            // 橡皮筋
+            if (mouseDown && currentBird && !currentBird.launched) {
+                ctx.strokeStyle = 'rgba(139, 69, 19, 0.7)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(slingshotX - 15, slingshotY - 20);
+                ctx.lineTo(currentBird.x, currentBird.y);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(slingshotX + 15, slingshotY - 20);
+                ctx.lineTo(currentBird.x, currentBird.y);
+                ctx.stroke();
+            }
+        }
+
+        // 绘制预估轨迹
+        function drawTrajectory(startX, startY, velX, velY) {
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+
+            let x = startX;
+            let y = startY;
+            let vx = velX;
+            let vy = velY;
+
+            for (let i = 0; i < 50; i++) {
+                x += vx;
+                y += vy;
+                vy += 0.3;
+
+                ctx.lineTo(x, y);
+
+                if (y > canvas.height || x < 0 || x > canvas.width) break;
+            }
+
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 游戏主循环
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制背景
+            drawBackground();
+
+            // 检查是否需要添加新小鸟（如果当前没有小鸟且还有猪）
+            if (birds.length === 0 && pigs.length > 0) {
+                const newBird = new Bird(slingshotX, slingshotY);
+                birds.push(newBird);
+                currentBird = newBird;
+                birdCountElement.textContent = birds.length;
+            }
+
+            // 更新和绘制小鸟
+            for (let i = birds.length - 1; i >= 0; i--) {
+                const bird = birds[i];
+                bird.update();
+                bird.draw();
+
+                // 检查小鸟是否不活跃，无论是在地面还是离开屏幕
+                if (!bird.active) {
+                    birds.splice(i, 1);
+                    birdCountElement.textContent = birds.length;
+                }
+            }
+
+            // 绘制弹弓
+            drawSlingshot();
+
+            // 更新和绘制猪
+            for (let i = pigs.length - 1; i >= 0; i--) {
+                const pig = pigs[i];
+                if (pig.active) {
+                    pig.draw();
+
+                    // 检查与所有小鸟的碰撞
+                    for (const bird of birds) {
+                        if (bird.launched && pig.checkCollision(bird)) {
+                            break;
+                        }
+                    }
+                } else {
+                    pigs.splice(i, 1);
+                }
+            }
+
+            // 更新和绘制方块
+            for (let i = blocks.length - 1; i >= 0; i--) {
+                const block = blocks[i];
+                if (block.active) {
+                    block.draw();
+
+                    // 检查与所有小鸟的碰撞
+                    for (const bird of birds) {
+                        if (bird.launched) {
+                            block.checkCollision(bird);
+                        }
+                    }
+                } else {
+                    blocks.splice(i, 1);
+                }
+            }
+
+            // 更新和绘制粒子
+            updateParticles();
+
+            // 检查胜利条件
+            if (pigs.length === 0) {
+                // 创建一个胜利显示效果
+                setTimeout(() => {
+                    level++;
+                    levelElement.textContent = level; // 立即更新关卡显示
+                    initGame(); // 进入下一关
+                }, 1000); // 延迟1秒进入下一关，给用户时间看到胜利
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 绘制背景
+        function drawBackground() {
+            // 天空渐变
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.6, '#87CEEB');
+            gradient.addColorStop(0.6, '#228B22');
+            gradient.addColorStop(1, '#228B22');
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 云朵
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            drawCloud(100, 80, 30);
+            drawCloud(300, 60, 25);
+            drawCloud(500, 100, 35);
+
+            // 太阳
+            ctx.beginPath();
+            ctx.arc(700, 80, 40, 0, Math.PI * 2);
+            ctx.fillStyle = '#FFD700';
+            ctx.fill();
+            // 太阳光线
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 12; i++) {
+                const angle = (i * Math.PI / 6);
+                ctx.beginPath();
+                ctx.moveTo(700 + Math.cos(angle) * 45, 80 + Math.sin(angle) * 45);
+                ctx.lineTo(700 + Math.cos(angle) * 60, 80 + Math.sin(angle) * 60);
+                ctx.stroke();
+            }
+        }
+
+        // 绘制云朵
+        function drawCloud(x, y, size) {
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.8, y - size * 0.2, size * 0.8, 0, Math.PI * 2);
+            ctx.arc(x + size * 1.5, y, size * 0.9, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.8, y + size * 0.2, size * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 粒子效果
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 10; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 3 + 1;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: Math.random() * 3 + 1,
+                    color: color,
+                    life: 30
+                });
+            }
+        }
+
+        // 更新和绘制粒子
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1; // 重力
+                p.life--;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.globalAlpha = p.life / 30;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // 事件监听器
+        canvas.addEventListener('mousedown', (e) => {
+            if (!currentBird || currentBird.launched) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const dx = x - currentBird.x;
+            const dy = y - currentBird.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < currentBird.radius + 10) {
+                mouseDown = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!mouseDown || !currentBird || currentBird.launched) return;
+
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+
+            const maxPull = 100;
+            const dx = mouseX - slingshotX;
+            const dy = mouseY - slingshotY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > maxPull) {
+                const angle = Math.atan2(dy, dx);
+                currentBird.x = slingshotX + Math.cos(angle) * maxPull;
+                currentBird.y = slingshotY + Math.sin(angle) * maxPull;
+            } else {
+                currentBird.x = mouseX;
+                currentBird.y = mouseY;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (!mouseDown || !currentBird || currentBird.launched) return;
+
+            mouseDown = false;
+
+            const dx = currentBird.x - slingshotX;
+            const dy = currentBird.y - slingshotY;
+
+            // 计算发射速度
+            const power = Math.min(Math.sqrt(dx * dx + dy * dy) * 0.2, 20);
+            const angle = Math.atan2(dy, dx);
+
+            currentBird.vx = Math.cos(angle) * power * -1;
+            currentBird.vy = Math.sin(angle) * power * -1;
+            currentBird.launched = true;
+
+            // 增加发射次数
+            shotsFired++;
+            shotsElement.textContent = shotsFired;
+
+            // 重置位置到弹射点附近（视觉效果）
+            currentBird.x = slingshotX;
+            currentBird.y = slingshotY;
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const mouseEvent = new MouseEvent('mouseup');
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        // 键盘事件
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                initGame();
+            }
+            // 暂停/恢复游戏
+            if (e.key === 'p' || e.key === 'P') {
+                gameRunning = !gameRunning;
+                if (gameRunning) {
+                    gameLoop();
+                }
+            }
+        });
+
+        // 开始按钮事件
+        startButton.addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            shotsFired = 0; // 点击开始时重置发射次数
+            shotsElement.textContent = shotsFired;
+            initGame();
+            gameLoop();
+        });
+
+        // 窗口失焦时暂停游戏
+        window.addEventListener('blur', () => {
+            gameRunning = false;
+        });
+
+        // 窗口聚焦时恢复游戏
+        window.addEventListener('focus', () => {
+            if (!startScreen.style.display || startScreen.style.display === 'none') {
+                gameRunning = true;
+                if (birds.length > 0 || pigs.length > 0) {
+                    gameLoop();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
