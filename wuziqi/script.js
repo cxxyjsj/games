@@ -73,15 +73,18 @@ class WuziqiGame {
         const totalPadding = Math.min(displaySize * 0.05, 40);
         const padding = totalPadding / 2;
 
+        // 计算实际棋盘大小
+        const actualBoardSize = (this.boardSize - 1) * this.cellSize + totalPadding;
+
         // 计算棋盘区域的起始位置（居中）
-        const boardStartX = (displayWidth - displaySize) / 2;
-        const boardStartY = (displayHeight - displaySize) / 2;
+        const boardStartX = (displayWidth - actualBoardSize) / 2;
+        const boardStartY = (displayHeight - actualBoardSize) / 2;
 
         this.ctx.clearRect(0, 0, displayWidth, displayHeight);
 
         // 绘制棋盘背景（正方形）
         this.ctx.fillStyle = '#DEB887';
-        this.ctx.fillRect(boardStartX, boardStartY, displaySize, displaySize);
+        this.ctx.fillRect(boardStartX, boardStartY, actualBoardSize, actualBoardSize);
 
         // 绘制网格线
         this.ctx.strokeStyle = '#8B4513';
@@ -92,7 +95,7 @@ class WuziqiGame {
         for (let i = 0; i < this.boardSize; i++) {
             const x = boardStartX + padding + i * this.cellSize;
             const startY = boardStartY + padding;
-            const endY = boardStartY + displaySize - padding;
+            const endY = boardStartY + padding + (this.boardSize - 1) * this.cellSize;
             this.ctx.moveTo(x, startY);
             this.ctx.lineTo(x, endY);
         }
@@ -101,7 +104,7 @@ class WuziqiGame {
         for (let i = 0; i < this.boardSize; i++) {
             const y = boardStartY + padding + i * this.cellSize;
             const startX = boardStartX + padding;
-            const endX = boardStartX + displaySize - padding;
+            const endX = boardStartX + padding + (this.boardSize - 1) * this.cellSize;
             this.ctx.moveTo(startX, y);
             this.ctx.lineTo(endX, y);
         }
@@ -144,8 +147,11 @@ class WuziqiGame {
         const totalPadding = Math.min(displaySize * 0.05, 40);
         const padding = totalPadding / 2;
 
-        const boardStartX = (displayWidth - displaySize) / 2;
-        const boardStartY = (displayHeight - displaySize) / 2;
+        // 计算实际棋盘大小
+        const actualBoardSize = (this.boardSize - 1) * this.cellSize + totalPadding;
+
+        const boardStartX = (displayWidth - actualBoardSize) / 2;
+        const boardStartY = (displayHeight - actualBoardSize) / 2;
 
         const x = boardStartX + padding + col * this.cellSize;
         const y = boardStartY + padding + row * this.cellSize;
@@ -221,13 +227,16 @@ class WuziqiGame {
         const totalPadding = Math.min(displaySize * 0.05, 40);
         const padding = totalPadding / 2;
 
+        // 计算实际棋盘大小
+        const actualBoardSize = (this.boardSize - 1) * this.cellSize + totalPadding;
+
         // 计算棋盘左上角的偏移量
-        const boardStartX = (displayWidth - displaySize) / 2;
-        const boardStartY = (displayHeight - displaySize) / 2;
+        const boardStartX = (displayWidth - actualBoardSize) / 2;
+        const boardStartY = (displayHeight - actualBoardSize) / 2;
 
         // 确保点击在棋盘范围内
-        if (clientX < boardStartX + padding || clientX > (boardStartX + displaySize - padding) ||
-            clientY < boardStartY + padding || clientY > (boardStartY + displaySize - padding)) {
+        if (clientX < boardStartX + padding || clientX > (boardStartX + actualBoardSize - padding) ||
+            clientY < boardStartY + padding || clientY > (boardStartY + actualBoardSize - padding)) {
             return;
         }
 
