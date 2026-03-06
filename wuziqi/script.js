@@ -69,7 +69,8 @@ class WuziqiGame {
         // 使用较小的边长来确保棋盘保持正方形
         const displaySize = Math.min(displayWidth, displayHeight);
 
-        const totalPadding = 10;
+        // 使用与calculateCellSize方法一致的padding计算方式
+        const totalPadding = Math.min(displaySize * 0.05, 40);
         const padding = totalPadding / 2;
 
         // 计算棋盘区域的起始位置（居中）
@@ -139,7 +140,8 @@ class WuziqiGame {
         // 使用较小的边长来确保棋盘保持正方形
         const displaySize = Math.min(displayWidth, displayHeight);
 
-        const totalPadding = 10;
+        // 使用一致的padding计算
+        const totalPadding = Math.min(displaySize * 0.05, 40);
         const padding = totalPadding / 2;
 
         const boardStartX = (displayWidth - displaySize) / 2;
@@ -215,7 +217,8 @@ class WuziqiGame {
         // 使用较小的边长来确保棋盘保持正方形
         const displaySize = Math.min(displayWidth, displayHeight);
 
-        const totalPadding = 20; // 与calculateCellSize中保持一致
+        // 使用与drawBoard和calculateCellSize一致的padding计算
+        const totalPadding = Math.min(displaySize * 0.05, 40);
         const padding = totalPadding / 2;
 
         // 计算棋盘左上角的偏移量

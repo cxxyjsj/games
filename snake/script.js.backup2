@@ -813,6 +813,7 @@ class Game {
     }
 
     // Handle game over
+/tmp/new_gameover.txt
     // Handle game over
     gameOver() {
         this.isGameOver = true;
@@ -867,6 +868,8 @@ class Game {
                 gameOverDiv.remove();
                 document.removeEventListener('keydown', this.spaceKeyListener);
             }
+        });
+    }
         });
     }
 

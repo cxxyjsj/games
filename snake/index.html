@@ -4,102 +4,190 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>贪吃蛇游戏</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            border: 2px solid #333;
+            background-color: #111;
+            width: 100%;
+            height: 100%;
+        }
+
+        #gameUI {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: white;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.6));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+            text-align: center;
+        }
+
+        #startScreen h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            color: #4CAF50;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+
+        #startButton {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
+            background: linear-gradient(to bottom, #4CAF50, #2E7D32);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+
+        #startButton:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            background: linear-gradient(to bottom, #66BB6A, #388E3C);
+        }
+
+        #instructions {
+            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            font-size: 16px;
+            max-width: 80%;
+        }
+
+        .snake-info {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: white;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <div class="game-container">
-        <h1>贪吃蛇游戏</h1>
-
-        <div class="game-info">
-            <div class="score-section">
-                <span class="score-label">分数: </span>
-                <span id="score">0</span>
-            </div>
-            <div class="high-score-section">
-                <span class="high-score-label">最高分: </span>
-                <span id="high-score">0</span>
-            </div>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="gameUI">
+            <div>分数: <span id="score">0</span></div>
+            <div>最高分: <span id="high-score">0</span></div>
         </div>
-
-        <div class="difficulty-section">
-            <label for="difficulty">难度:</label>
-            <select id="difficulty">
+        <div class="snake-info">
+            难度: <span id="difficulty-display">简单</span>
+        </div>
+        <div id="startScreen">
+            <h1>🐍 贪吃蛇游戏 🐍</h1>
+            <div id="instructions">
+                <p>🎮 使用方向键控制蛇的移动</p>
+                <p>🍎 吃到食物后蛇会变长并获得分数</p>
+                <p>💥 撞墙或撞到自己身体则游戏结束</p>
+                <p>⚡ 收集道具获得特殊能力</p>
+                <div class="powerup-details" style="margin-top: 20px;">
+                    <div class="powerup-detail" style="display: inline-block; margin: 0 10px; text-align: center;">
+                        <div style="font-size: 24px;">🍎</div>
+                        <div><strong>普通食物</strong></div>
+                        <div style="font-size: 12px;">增加 10 分，长度+1</div>
+                    </div>
+                    <div class="powerup-detail" style="display: inline-block; margin: 0 10px; text-align: center;">
+                        <div style="font-size: 24px;">⚡</div>
+                        <div><strong>加速道具</strong></div>
+                        <div style="font-size: 12px;">提升速度 5 秒</div>
+                    </div>
+                    <div class="powerup-detail" style="display: inline-block; margin: 0 10px; text-align: center;">
+                        <div style="font-size: 24px;">🛡️</div>
+                        <div><strong>无敌道具</strong></div>
+                        <div style="font-size: 12px;">5 秒无敌状态</div>
+                    </div>
+                    <div class="powerup-detail" style="display: inline-block; margin: 0 10px; text-align: center;">
+                        <div style="font-size: 24px;">🧲</div>
+                        <div><strong>磁铁道具</strong></div>
+                        <div style="font-size: 12px;">吸引周围食物 5 秒</div>
+                    </div>
+                </div>
+            </div>
+            <select id="difficulty" style="margin-top: 20px; padding: 8px 15px; font-size: 16px; border-radius: 20px; border: none; background-color: #fff; color: #333;">
                 <option value="easy" selected>简单</option>
                 <option value="medium">中等</option>
                 <option value="hard">困难</option>
                 <option value="expert">专家</option>
             </select>
-        </div>
-
-        <!-- 新增道具说明面板 -->
-        <div class="instructions">
-            <details open>
-                <summary>游戏说明与道具详解</summary>
-                <div class="instructions-content">
-                    <h3>游戏玩法</h3>
-                    <p>使用方向键控制蛇的移动，吃到食物后蛇会变长并获得分数。</p>
-
-                    <h3>道具详解</h3>
-                    <div class="powerup-details">
-                        <div class="powerup-detail">
-                            <span class="powerup-icon">🍎</span>
-                            <div class="powerup-info">
-                                <strong>普通食物</strong>
-                                <p>增加 10 分，蛇长度+1</p>
-                            </div>
-                        </div>
-                        <div class="powerup-detail">
-                            <span class="powerup-icon">⚡</span>
-                            <div class="powerup-info">
-                                <strong>加速道具</strong>
-                                <p>暂时提高蛇的移动速度，持续 5 秒</p>
-                                <p>玩法：帮助你在紧急情况下快速穿过狭窄通道</p>
-                            </div>
-                        </div>
-                        <div class="powerup-detail">
-                            <span class="powerup-icon">🛡️</span>
-                            <div class="powerup-info">
-                                <strong>无敌道具</strong>
-                                <p>获得 5 秒无敌状态，可穿墙和穿身体</p>
-                                <p>玩法：在被困时使用，快速脱离危险区域</p>
-                            </div>
-                        </div>
-                        <div class="powerup-detail">
-                            <span class="powerup-icon">🧲</span>
-                            <div class="powerup-info">
-                                <strong>磁铁道具</strong>
-                                <p>开启磁铁效应，将周围食物吸向蛇头，持续 5 秒</p>
-                                <p>玩法：在食物分散时收集食物，提高效率</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h3>游戏规则</h3>
-                    <ul>
-                        <li>撞墙或撞到自己身体则游戏结束</li>
-                        <li>撞到障碍物则游戏结束（除非处于无敌状态）</li>
-                        <li>每吃一个食物，蛇长度增加 1</li>
-                        <li>不同食物提供不同分数</li>
-                    </ul>
-                </div>
-            </details>
-        </div>
-
-        <canvas id="gameCanvas" width="300" height="300"></canvas>
-
-        <div class="controls">
-            <button id="startBtn">开始</button>
-            <button id="pauseBtn">暂停</button>
-            <button id="restartBtn">重新开始</button>
-        </div>
-
-        <div id="gameOver" class="game-over hidden">
-            <h2>游戏结束!</h2>
-            <p>最终分数: <span id="final-score">0</span></p>
-            <button id="playAgainBtn">再玩一次</button>
+            <button id="startButton">🎮 开始游戏</button>
         </div>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // 全屏设置 - 动态设置canvas尺寸
+        function setCanvasSize() {
+            const canvas = document.getElementById('gameCanvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // 初始设置
+        setCanvasSize();
+
+        // 窗口大小改变时重新设置
+        window.addEventListener('resize', setCanvasSize);
+
+        // 在游戏脚本加载后应用这些设置
+        document.addEventListener('DOMContentLoaded', function() {
+            // 等待游戏初始化完成后再应用全屏设置
+            if (typeof initGame !== 'undefined') {
+                const originalInitGame = initGame;
+                initGame = function() {
+                    setCanvasSize();
+                    originalInitGame();
+                };
+            }
+
+            // 更新难度显示
+            document.getElementById('difficulty').addEventListener('change', function() {
+                document.getElementById('difficulty-display').textContent = this.options[this.selectedIndex].text;
+            });
+        });
+    </script>
 </body>
 </html>

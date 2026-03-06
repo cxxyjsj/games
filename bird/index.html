@@ -9,22 +9,24 @@
             margin: 0;
             padding: 0;
             background-color: #87CEEB;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             font-family: Arial, sans-serif;
+            overflow: hidden;
         }
 
         #gameContainer {
             position: relative;
-            width: 800px;
-            height: 600px;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         #gameCanvas {
             border: 2px solid #333;
             background: linear-gradient(to bottom, #87CEEB 60%, #228B22 60%);
+            width: 100%;
+            height: 100%;
         }
 
         #gameUI {
@@ -108,7 +110,7 @@
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <canvas id="gameCanvas"></canvas>
         <div id="gameUI">
             <div>分数: <span id="score">0</span></div>
             <div>关卡: <span id="level">1</span></div>
@@ -138,6 +140,18 @@
         const startScreen = document.getElementById('startScreen');
         const startButton = document.getElementById('startButton');
 
+        // 全屏设置 - 动态设置canvas尺寸
+        function setCanvasSize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // 初始设置
+        setCanvasSize();
+
+        // 窗口大小改变时重新设置
+        window.addEventListener('resize', setCanvasSize);
+
         let gameRunning = false;
         let score = 0;
         let level = 1;
@@ -146,8 +160,22 @@
         let pigs = [];
         let blocks = [];
         let particles = []; // 添加粒子数组
+
+        // 根据窗口大小调整弹弓位置
         let slingshotX = 150;
         let slingshotY = 400;
+
+        // 全屏适配函数
+        function updatePositionsForFullscreen() {
+            // 根据比例调整弹弓位置
+            const scaleX = canvas.width / 800;
+            const scaleY = canvas.height / 600;
+            slingshotX = Math.min(150 * scaleX, canvas.width * 0.2);
+            slingshotY = Math.max(400 * scaleY, canvas.height * 0.6);
+        }
+
+        updatePositionsForFullscreen();
+
         let currentBird = null;
         let trajectory = [];
         let mouseDown = false;
@@ -403,53 +431,57 @@
             generateLevel();
         }
 
-        // 生成关卡布局
+        // 生成关卡布局 - 调整坐标以适应全屏
         function generateLevel() {
             // 清除现有敌人和障碍
             pigs = [];
             blocks = [];
 
+            // 计算合适的比例因子
+            const scaleWidth = canvas.width / 800;
+            const scaleHeight = canvas.height / 600;
+
             // 关卡1
             if (level === 1) {
                 // 创建一些猪
-                pigs.push(new Pig(600, 450));
-                pigs.push(new Pig(650, 450));
-                pigs.push(new Pig(625, 400));
+                pigs.push(new Pig(600 * scaleWidth, (canvas.height - 150) * 0.8));
+                pigs.push(new Pig(650 * scaleWidth, (canvas.height - 150) * 0.8));
+                pigs.push(new Pig(625 * scaleWidth, (canvas.height - 200) * 0.8));
 
                 // 创建一些方块作为障碍物
-                blocks.push(new Block(580, 400, 40, 80));
-                blocks.push(new Block(640, 400, 40, 80));
-                blocks.push(new Block(600, 350, 80, 20));
+                blocks.push(new Block(580 * scaleWidth, (canvas.height - 200) * 0.8, 40 * scaleWidth, 80 * scaleHeight));
+                blocks.push(new Block(640 * scaleWidth, (canvas.height - 200) * 0.8, 40 * scaleWidth, 80 * scaleHeight));
+                blocks.push(new Block(600 * scaleWidth, (canvas.height - 250) * 0.8, 80 * scaleWidth, 20 * scaleHeight));
             }
             // 关卡2
             else if (level === 2) {
-                pigs.push(new Pig(600, 450));
-                pigs.push(new Pig(630, 450));
-                pigs.push(new Pig(660, 450));
-                pigs.push(new Pig(630, 400));
+                pigs.push(new Pig(600 * scaleWidth, (canvas.height - 150) * 0.8));
+                pigs.push(new Pig(630 * scaleWidth, (canvas.height - 150) * 0.8));
+                pigs.push(new Pig(660 * scaleWidth, (canvas.height - 150) * 0.8));
+                pigs.push(new Pig(630 * scaleWidth, (canvas.height - 200) * 0.8));
 
-                blocks.push(new Block(580, 400, 30, 80));
-                blocks.push(new Block(670, 400, 30, 80));
-                blocks.push(new Block(600, 350, 100, 20));
-                blocks.push(new Block(610, 300, 40, 20));
+                blocks.push(new Block(580 * scaleWidth, (canvas.height - 200) * 0.8, 30 * scaleWidth, 80 * scaleHeight));
+                blocks.push(new Block(670 * scaleWidth, (canvas.height - 200) * 0.8, 30 * scaleWidth, 80 * scaleHeight));
+                blocks.push(new Block(600 * scaleWidth, (canvas.height - 250) * 0.8, 100 * scaleWidth, 20 * scaleHeight));
+                blocks.push(new Block(610 * scaleWidth, (canvas.height - 300) * 0.8, 40 * scaleWidth, 20 * scaleHeight));
             }
             // 关卡3及以上
             else {
                 // 随着关卡增加，难度递增
                 const pigsToAdd = Math.min(level, 6); // 最多6只猪
                 for (let i = 0; i < pigsToAdd; i++) {
-                    const x = 580 + (i % 3) * 40;
-                    const y = 450 - Math.floor(i / 3) * 50;
+                    const x = (580 + (i % 3) * 40) * scaleWidth;
+                    const y = (canvas.height - (250 - Math.floor(i / 3) * 50)) * 0.8;
                     pigs.push(new Pig(x, y));
                 }
 
                 // 添加更多方块
                 const blocksToAdd = Math.min(Math.floor(level / 2) + 3, 8); // 随着关卡增加方块数
                 for (let i = 0; i < blocksToAdd; i++) {
-                    const x = 550 + (i % 4) * 50;
-                    const y = 400 - (i % 2) * 50;
-                    const width = 30 + (i % 3) * 10;
-                    const height = 30 + (i % 2) * 20;
+                    const x = (550 + (i % 4) * 50) * scaleWidth;
+                    const y = (canvas.height - (300 - (i % 2) * 50)) * 0.8;
+                    const width = (30 + (i % 3) * 10) * scaleWidth;
+                    const height = (30 + (i % 2) * 20) * scaleHeight;
                     blocks.push(new Block(x, y, width, height));
                 }
             }
@@ -619,15 +651,15 @@
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 云朵
+            // 云朵 - 适配全屏
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            drawCloud(100, 80, 30);
-            drawCloud(300, 60, 25);
-            drawCloud(500, 100, 35);
+            drawCloud(canvas.width * 0.1, canvas.height * 0.1, canvas.width * 0.05);
+            drawCloud(canvas.width * 0.3, canvas.height * 0.08, canvas.width * 0.04);
+            drawCloud(canvas.width * 0.6, canvas.height * 0.15, canvas.width * 0.06);
 
-            // 太阳
+            // 太阳 - 适配全屏
             ctx.beginPath();
-            ctx.arc(700, 80, 40, 0, Math.PI * 2);
+            ctx.arc(canvas.width * 0.85, canvas.height * 0.1, Math.min(canvas.width, canvas.height) * 0.05, 0, Math.PI * 2);
             ctx.fillStyle = '#FFD700';
             ctx.fill();
             // 太阳光线
@@ -636,13 +668,15 @@
             for (let i = 0; i < 12; i++) {
                 const angle = (i * Math.PI / 6);
                 ctx.beginPath();
-                ctx.moveTo(700 + Math.cos(angle) * 45, 80 + Math.sin(angle) * 45);
-                ctx.lineTo(700 + Math.cos(angle) * 60, 80 + Math.sin(angle) * 60);
+                ctx.moveTo(canvas.width * 0.85 + Math.cos(angle) * Math.min(canvas.width, canvas.height) * 0.06,
+                          canvas.height * 0.1 + Math.sin(angle) * Math.min(canvas.width, canvas.height) * 0.06);
+                ctx.lineTo(canvas.width * 0.85 + Math.cos(angle) * Math.min(canvas.width, canvas.height) * 0.07,
+                          canvas.height * 0.1 + Math.sin(angle) * Math.min(canvas.width, canvas.height) * 0.07);
                 ctx.stroke();
             }
         }
 
-        // 绘制云朵
+        // 绘制云朵 - 支持全屏适配
         function drawCloud(x, y, size) {
             ctx.beginPath();
             ctx.arc(x, y, size, 0, Math.PI * 2);

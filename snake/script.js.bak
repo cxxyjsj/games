@@ -813,59 +813,33 @@ class Game {
     }
 
     // Handle game over
-    // Handle game over
     gameOver() {
         this.isGameOver = true;
         clearInterval(this.gameInterval);
 
-        // Create a game over overlay
-        const gameOverDiv = document.createElement('div');
-        gameOverDiv.id = 'gameOver';
-        gameOverDiv.className = 'game-over';
-        gameOverDiv.style.position = 'absolute';
-        gameOverDiv.style.top = '50%';
-        gameOverDiv.style.left = '50%';
-        gameOverDiv.style.transform = 'translate(-50%, -50%)';
-        gameOverDiv.style.background = 'rgba(0, 0, 0, 0.9)';
-        gameOverDiv.style.color = 'white';
-        gameOverDiv.style.padding = '30px';
-        gameOverDiv.style.borderRadius = '10px';
-        gameOverDiv.style.textAlign = 'center';
-        gameOverDiv.style.zIndex = '100';
-        gameOverDiv.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.5)';
-        gameOverDiv.innerHTML = `
-            <h2 style="color: #ff6b6b; margin-bottom: 15px;">GAME OVER</h2>
-            <p style="font-size: 18px; margin: 10px 0;">最终分数: <span id="final-score">${this.scoreManager.getCurrentScore()}</span></p>
-            <button id="playAgainBtn" style="
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                margin-top: 15px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 16px;
-                transition: background-color 0.3s;
-            ">继续游戏</button>
-        `;
+        // Display game over message on canvas
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Add the game over div to the game container
-        const gameContainer = document.getElementById('gameContainer');
-        gameContainer.appendChild(gameOverDiv);
+        this.ctx.font = '48px Arial';
+        this.ctx.fillStyle = '#ff6b6b';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 50);
 
-        // Add event listener to the play again button
-        document.getElementById('playAgainBtn').addEventListener('click', () => {
-            this.restart();
-            gameOverDiv.remove();
-        });
+        this.ctx.font = '24px Arial';
+        this.ctx.fillStyle = 'white';
+        this.ctx.fillText(`Final Score: ${this.scoreManager.getCurrentScore()}`, this.canvas.width / 2, this.canvas.height / 2 + 10);
 
-        // Allow restarting with space key
-        document.addEventListener('keydown', this.spaceKeyListener = (e) => {
+        this.ctx.font = '20px Arial';
+        this.ctx.fillText('Press SPACE to Restart', this.canvas.width / 2, this.canvas.height / 2 + 50);
+
+        // Add event listener for restarting the game
+        document.addEventListener('keydown', this.handleRestartKey = (e) => {
             if (e.key === ' ' || e.key === 'Spacebar') {
                 e.preventDefault();
                 this.restart();
-                gameOverDiv.remove();
-                document.removeEventListener('keydown', this.spaceKeyListener);
+                document.removeEventListener('keydown', this.handleRestartKey);
             }
         });
     }
