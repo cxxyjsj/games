@@ -1,0 +1,218 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.game-container {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    width: fit-content;
+    max-width: 100%;
+    margin: 20px auto;
+    overflow-x: auto;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.game-info {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 15px;
+    font-weight: bold;
+    color: #555;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.difficulty-selector {
+    margin-bottom: 15px;
+}
+
+.diff-btn {
+    padding: 8px 15px;
+    margin: 0 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #ddd;
+    transition: background-color 0.3s;
+}
+
+.diff-btn:hover {
+    background-color: #ccc;
+}
+
+.diff-btn.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.game-board {
+    display: inline-grid;
+    gap: 2px;
+    background-color: #bdbdbd;
+    padding: 5px;
+    border-radius: 5px;
+    margin: 15px 0;
+    max-width: calc(100vw - 40px);
+    overflow-x: auto;
+}
+
+.cell {
+    width: 30px;
+    height: 30px;
+    background-color: #c0c0c0;
+    border: 2px outset #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    font-size: 14px;
+}
+
+.cell.revealed {
+    border: 1px solid #bdbdbd;
+    background-color: #d3d3d3;
+}
+
+.cell.mine {
+    background-color: #ff6b6b;
+}
+
+.cell.flagged::after {
+    content: "🚩";
+}
+
+.cell[data-value="1"] {
+    color: blue;
+}
+
+.cell[data-value="2"] {
+    color: green;
+}
+
+.cell[data-value="3"] {
+    color: red;
+}
+
+.cell[data-value="4"] {
+    color: purple;
+}
+
+.cell[data-value="5"] {
+    color: maroon;
+}
+
+.cell[data-value="6"] {
+    color: turquoise;
+}
+
+.cell[data-value="7"] {
+    color: black;
+}
+
+.cell[data-value="8"] {
+    color: gray;
+}
+
+.cell.mine.revealed::after {
+    content: "💣";
+}
+
+.game-controls {
+    margin-top: 15px;
+}
+
+#reset-btn, #play-again-btn {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 0 5px;
+}
+
+#reset-btn:hover, #play-again-btn:hover {
+    background-color: #45a049;
+}
+
+.game-over {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.game-over-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.game-over h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 500px) {
+    .cell {
+        width: 25px;
+        height: 25px;
+        font-size: 12px;
+    }
+
+    .game-container {
+        padding: 10px;
+    }
+}
+
+/* 针对大网格的响应式设计 */
+@media (min-width: 501px) {
+    .large-grid .cell {
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+    }
+
+    .large-grid .game-board {
+        transform: scale(0.9);
+        transform-origin: top center;
+    }
+}

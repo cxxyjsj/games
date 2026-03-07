@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扫雷游戏</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1>扫雷游戏</h1>
+        <div class="game-info">
+            <div class="info-item">
+                <span>剩余地雷:</span>
+                <span id="mine-count">10</span>
+            </div>
+            <div class="info-item">
+                <span>时间:</span>
+                <span id="timer">0</span>
+            </div>
+        </div>
+        <div class="difficulty-selector">
+            <button id="easy-btn" class="diff-btn active">简单</button>
+            <button id="medium-btn" class="diff-btn">中等</button>
+            <button id="hard-btn" class="diff-btn">困难</button>
+        </div>
+        <div class="game-board" id="game-board"></div>
+        <div class="game-controls">
+            <button id="reset-btn">重新开始</button>
+        </div>
+        <div id="game-over" class="game-over hidden">
+            <div class="game-over-content">
+                <h2 id="result-text"></h2>
+                <button id="play-again-btn">再玩一次</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
